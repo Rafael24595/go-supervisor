@@ -2,6 +2,7 @@ package supervisor
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/Rafael24595/go-supervisor/supervisor/result"
@@ -41,40 +42,47 @@ func (s *Supervisor) Run(task Task) error {
 
 		switch {
 		case cfg.ctx.Err() != nil:
-			fmt.Fprintf(cfg.writer, "[%s] stopping: context cancelled", cfg.name)
+			write(cfg.writer, "[%s] stopping: context cancelled", cfg.name)
 			return nil
 
 		case res.Panic != nil:
-			fmt.Fprintf(cfg.writer, "[%s] panic recovered: %v\n%s", cfg.name, res.Panic, res.Stack)
+			write(cfg.writer, "[%s] panic recovered: %v\n%s", cfg.name, res.Panic, res.Stack)
 
 		case res.Err != nil:
-			fmt.Fprintf(cfg.writer, "[%s] task failed: %v", cfg.name, res.Err)
+			write(cfg.writer, "[%s] task failed: %v", cfg.name, res.Err)
 
 		default:
-			fmt.Fprintf(cfg.writer, "[%s] task exited normally", cfg.name)
+			write(cfg.writer, "[%s] task exited normally", cfg.name)
 			return nil
 		}
 
 		if !cfg.policy.RestartIf(res) {
-			fmt.Fprintf(cfg.writer, "[%s] stop by policy", cfg.name)
+			write(cfg.writer, "[%s] stop by policy", cfg.name)
 			return res.Error()
 		}
 
 		restarts += 1
 		if !cfg.policy.RestartAllowed(restarts) {
-			fmt.Fprintf(cfg.writer, "[%s] restart limit exceeded (%d), stopping", cfg.name, restarts)
+			write(cfg.writer, "[%s] restart limit exceeded (%d), stopping", cfg.name, restarts)
 			return res.Error()
 		}
 
-		fmt.Fprintf(cfg.writer, "[%s] restarting (%d) in %s", cfg.name, restarts, cfg.policy.Delay)
+		write(cfg.writer, "[%s] restarting (%d) in %s", cfg.name, restarts, cfg.policy.Delay)
 
 		select {
 		case <-cfg.ctx.Done():
-			fmt.Fprintf(cfg.writer, "[%s] stopping: context cancelled", cfg.name)
+			write(cfg.writer, "[%s] stopping: context cancelled", cfg.name)
 			return nil
 
 		case <-time.After(cfg.policy.Delay):
 		}
+	}
+}
+
+func write(writer io.Writer, format string, a ...any) {
+	_, err := fmt.Fprintf(writer, format, a...)
+	if err != nil {
+		println("INTERNAL SUPERVISOR LOG ERROR:", err.Error())
 	}
 }
 
