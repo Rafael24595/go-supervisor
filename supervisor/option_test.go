@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -21,7 +20,7 @@ func TestDefaultConfig(t *testing.T) {
 
 	assert.Equal(t, name, cfg.name)
 	assert.Equal(t, context.Background(), cfg.ctx)
-	assert.Equal[io.Writer](t, os.Stderr, cfg.writer)
+	assert.NotNil(t, cfg.writer)
 
 	policy := policy.Default()
 	assert.Equal(t, policy.Delay, cfg.policy.Delay)

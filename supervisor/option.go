@@ -3,11 +3,11 @@ package supervisor
 import (
 	"context"
 	"io"
-	"os"
 
 	"github.com/Rafael24595/go-supervisor/supervisor/policy"
 	"github.com/Rafael24595/go-supervisor/supervisor/stack"
 	"github.com/Rafael24595/go-supervisor/supervisor/stack/debug"
+	"github.com/Rafael24595/go-supervisor/supervisor/writer"
 )
 
 type option func(*config)
@@ -33,7 +33,7 @@ func defaultConfig(name string) config {
 		name:   name,
 		ctx:    context.Background(),
 		policy: policy.Default(),
-		writer: os.Stderr,
+		writer: writer.StderrWithNewline(),
 		stack:  debug.Stack(),
 	}
 }
