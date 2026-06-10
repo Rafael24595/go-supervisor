@@ -44,7 +44,7 @@ func TestClearFunctionMethod(t *testing.T) {
 
 func TestProcessWithoutAbsoluteRoot(t *testing.T) {
 	p := standardProcessor{
-		hasAbsolute: false,
+		hasPath: false,
 	}
 
 	got := p.Process("/tmp/file.go")
@@ -54,8 +54,8 @@ func TestProcessWithoutAbsoluteRoot(t *testing.T) {
 
 func TestProcessRelativePath(t *testing.T) {
 	p := standardProcessor{
-		absolute:    "/home/user/project/",
-		hasAbsolute: true,
+		path:    "/home/user/project/",
+		hasPath: true,
 	}
 
 	got := p.Process(
@@ -67,8 +67,8 @@ func TestProcessRelativePath(t *testing.T) {
 
 func TestProcessExternalPath(t *testing.T) {
 	p := standardProcessor{
-		absolute:    "/home/user/project/",
-		hasAbsolute: true,
+		path:    "/home/user/project/",
+		hasPath: true,
 	}
 
 	got := p.Process(

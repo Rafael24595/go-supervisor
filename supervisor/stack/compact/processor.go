@@ -10,14 +10,14 @@ import (
 type Processor func(path string) string
 
 type standardProcessor struct {
-	absolute    string
-	hasAbsolute bool
+	path    string
+	hasPath bool
 }
 
 // EmptyProcessor returns a Processor that leaves paths unchanged.
 func EmptyProcessor() Processor {
 	instance := standardProcessor{
-		hasAbsolute: false,
+		hasPath: false,
 	}
 	return instance.Process
 }
@@ -29,35 +29,63 @@ func EmptyProcessor() Processor {
 // paths unchanged.
 func StandardProcessor() Processor {
 	info, ok := debug.ReadBuildInfo()
+	if !ok || info.Main.Path == "" {
+		return EmptyProcessor()
+	}
+
+	frame, ok := findMainFrame(info.Main.Path)
 	if !ok {
 		return EmptyProcessor()
 	}
 
-	pc, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return EmptyProcessor()
-	}
-
-	packageRelative := clearFunction(
+	mainDir := clearFunction(
 		info.Main.Path,
-		runtime.FuncForPC(pc).Name(),
+		frame.Function,
 	)
 
-	absolute, _, ok := strings.Cut(file, packageRelative)
+	path, _, ok := strings.Cut(frame.File, mainDir)
 	if !ok {
 		return EmptyProcessor()
 	}
 
 	instance := standardProcessor{
-		absolute:    absolute,
-		hasAbsolute: true,
+		path:    strings.ToLower(path),
+		hasPath: true,
 	}
 
 	return instance.Process
 }
 
+func findMainFrame(main string) (runtime.Frame, bool) {
+	size := 64
+
+	for {
+		pcs := make([]uintptr, size)
+		n := runtime.Callers(2, pcs)
+
+		frames := runtime.CallersFrames(pcs[:n])
+
+		for {
+			frame, more := frames.Next()
+			if strings.HasPrefix(frame.Function, main) {
+				return frame, true
+			}
+
+			if !more {
+				break
+			}
+		}
+
+		if n < size {
+			return runtime.Frame{}, false
+		}
+
+		size *= 2
+	}
+}
+
 func clearFunction(project, function string) string {
-	functionRelative := strings.ReplaceAll(function, project, "")
+	functionRelative := strings.TrimPrefix(function, project)
 	functionRelative = strings.TrimPrefix(functionRelative, "/")
 
 	lastSlash := strings.LastIndex(functionRelative, "/")
@@ -77,11 +105,14 @@ func clearFunction(project, function string) string {
 // processor has been initialized with a project root. Otherwise, it returns
 // the original path unchanged.
 func (r standardProcessor) Process(path string) string {
-	if !r.hasAbsolute {
+	if !r.hasPath {
 		return path
 	}
 
-	_, relative, ok := strings.Cut(path, r.absolute)
+	_, relative, ok := strings.Cut(
+		strings.ToLower(path), r.path,
+	)
+
 	if !ok {
 		return path
 	}
