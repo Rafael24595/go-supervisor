@@ -1,0 +1,10 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    uses: Rafael24595/github-workflows/.github/workflows/go-release.yml@main
+    with:
+      artifact-name: "go-supervisor"
